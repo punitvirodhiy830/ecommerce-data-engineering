@@ -1,24 +1,42 @@
-import pandas as pd
+from pyspark.sql import DataFrame
+from pyspark.sql.functions import col, trim, to_date
 
 
-def transform_data(df: pd.DataFrame) -> pd.DataFrame:
-    """Clean and transform raw order data."""
+def transform_data(df: DataFrame) -> DataFrame:
+    """Clean and transform raw e-commerce data using PySpark."""
 
-    df = df.copy()
+    # Remove extra spaces from text columns
+    text_columns = [
+        "customer_name",
+        "country",
+        "product_name",
+        "category",
+        "status"
+    ]
 
-    # Standardize text columns
-    df["customer_name"] = df["customer_name"].str.strip()
-    df["country"] = df["country"].str.strip()
-    df["product_name"] = df["product_name"].str.strip()
-    df["category"] = df["category"].str.strip()
-    df["status"] = df["status"].str.strip()
+    for column_name in text_columns:
+        df = df.withColumn(
+            column_name,
+            trim(col(column_name))
+        )
 
-    # Convert data types
-    df["order_date"] = pd.to_datetime(df["order_date"])
-    df["quantity"] = pd.to_numeric(df["quantity"], errors="coerce")
-    df["unit_price"] = pd.to_numeric(df["unit_price"], errors="coerce")
+    # Convert columns to correct data types
+    df = df.withColumn(
+        "order_date",
+        to_date(col("order_date"), "yyyy-MM-dd")
+    )
 
-    # Remove invalid records
+    df = df.withColumn(
+        "quantity",
+        col("quantity").cast("integer")
+    )
+
+    df = df.withColumn(
+        "unit_price",
+        col("unit_price").cast("double")
+    )
+
+    # Remove records with missing critical values
     df = df.dropna(
         subset=[
             "order_id",
@@ -26,27 +44,25 @@ def transform_data(df: pd.DataFrame) -> pd.DataFrame:
             "product_id",
             "order_date",
             "quantity",
-            "unit_price",
+            "unit_price"
         ]
     )
 
-    # Keep valid quantities and prices
-    df = df[(df["quantity"] > 0) & (df["unit_price"] >= 0)]
+    # Keep only valid quantity and price values
+    df = df.filter(
+        (col("quantity") > 0) &
+        (col("unit_price") >= 0)
+    )
 
-    # Create calculated column
-    df["total_amount"] = df["quantity"] * df["unit_price"]
+    # Calculate total order amount
+    df = df.withColumn(
+        "total_amount",
+        col("quantity") * col("unit_price")
+    )
 
     # Remove duplicate order-product records
-    df = df.drop_duplicates(
-        subset=["order_id", "product_id"]
+    df = df.dropDuplicates(
+        ["order_id", "product_id"]
     )
 
     return df
-
-
-if __name__ == "__main__":
-    raw_data = pd.read_csv("data/orders.csv")
-    transformed_data = transform_data(raw_data)
-
-    print("Rows after transformation:", len(transformed_data))
-    print(transformed_data.head())
