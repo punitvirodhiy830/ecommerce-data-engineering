@@ -1,96 +1,23 @@
--- E-Commerce Sales Analytics
--- These queries analyze the data loaded into the sales table.
+CREATE TABLE IF NOT EXISTS orders (
+    order_id INTEGER NOT NULL,
+    order_date DATE NOT NULL,
+    customer_id VARCHAR(50) NOT NULL,
+    customer_name VARCHAR(100),
+    country VARCHAR(100),
+    product_id VARCHAR(50) NOT NULL,
+    product_name VARCHAR(150),
+    category VARCHAR(100),
+    quantity INTEGER NOT NULL,
+    unit_price DECIMAL(12, 2) NOT NULL,
+    status VARCHAR(30),
+    total_amount DECIMAL(14, 2) NOT NULL
+);
 
+CREATE INDEX IF NOT EXISTS idx_orders_order_date
+ON orders(order_date);
 
--- 1. Total completed revenue
-SELECT
-    ROUND(SUM(total_amount), 2) AS total_revenue
-FROM sales
-WHERE status = 'Completed';
+CREATE INDEX IF NOT EXISTS idx_orders_customer_id
+ON orders(customer_id);
 
-
--- 2. Total number of completed orders
-SELECT
-    COUNT(DISTINCT order_id) AS total_orders
-FROM sales
-WHERE status = 'Completed';
-
-
--- 3. Revenue by country
-SELECT
-    country,
-    ROUND(SUM(total_amount), 2) AS revenue
-FROM sales
-WHERE status = 'Completed'
-GROUP BY country
-ORDER BY revenue DESC;
-
-
--- 4. Revenue by product category
-SELECT
-    category,
-    ROUND(SUM(total_amount), 2) AS revenue
-FROM sales
-WHERE status = 'Completed'
-GROUP BY category
-ORDER BY revenue DESC;
-
-
--- 5. Top 5 products by revenue
-SELECT
-    product_name,
-    ROUND(SUM(total_amount), 2) AS revenue
-FROM sales
-WHERE status = 'Completed'
-GROUP BY product_name
-ORDER BY revenue DESC
-LIMIT 5;
-
-
--- 6. Monthly revenue
-SELECT
-    strftime('%Y-%m', order_date) AS month,
-    ROUND(SUM(total_amount), 2) AS revenue
-FROM sales
-WHERE status = 'Completed'
-GROUP BY month
-ORDER BY month;
-
-
--- 7. Average order value
-SELECT
-    ROUND(
-        SUM(total_amount) / COUNT(DISTINCT order_id),
-        2
-    ) AS average_order_value
-FROM sales
-WHERE status = 'Completed';
-
-
--- 8. Customers ranked by spending
-SELECT
-    customer_id,
-    customer_name,
-    ROUND(SUM(total_amount), 2) AS total_spent
-FROM sales
-WHERE status = 'Completed'
-GROUP BY customer_id, customer_name
-ORDER BY total_spent DESC;
-
-
--- 9. Cancelled orders
-SELECT
-    COUNT(DISTINCT order_id) AS cancelled_orders
-FROM sales
-WHERE status = 'Cancelled';
-
-
--- 10. Daily sales summary
-SELECT
-    order_date,
-    COUNT(DISTINCT order_id) AS orders,
-    ROUND(SUM(total_amount), 2) AS revenue
-FROM sales
-WHERE status = 'Completed'
-GROUP BY order_date
-ORDER BY order_date;
+CREATE INDEX IF NOT EXISTS idx_orders_product_id
+ON orders(product_id);
